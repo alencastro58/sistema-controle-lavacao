@@ -1,13 +1,13 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Numeric, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..extensions import db
 
 
-class Servico(db.Model):
-    __tablename__ = "servicos"
+class PrecoServico(db.Model):
+    __tablename__ = "precos_servicos"
 
     id: Mapped[int] = mapped_column(
         BigInteger,
@@ -15,21 +15,21 @@ class Servico(db.Model):
         autoincrement=True,
     )
 
-    nome: Mapped[str] = mapped_column(
-        String(100),
+    servico_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("servicos.id", ondelete="RESTRICT"),
         nullable=False,
-        unique=True,
     )
 
-    descricao: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
+    porte_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("portes_veiculo.id", ondelete="RESTRICT"),
+        nullable=False,
     )
 
     valor: Mapped[float] = mapped_column(
         Numeric(12, 2),
         nullable=False,
-        default=0,
     )
 
     ativo: Mapped[bool] = mapped_column(
@@ -50,16 +50,24 @@ class Servico(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    
-    itens_ordem_servico = relationship(
-        "ItemOrdemServico",
-        back_populates="servico",
+
+    servico = relationship(
+        "Servico",
+        back_populates="precos",
     )
-    
-    precos = relationship(
-        "PrecoServico",
-        back_populates="servico",
+
+    porte = relationship(
+        "PorteVeiculo",
+        back_populates="precos_servicos",
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "servico_id",
+            "porte_id",
+            name="uq_precos_servicos_servico_porte",
+        ),
     )
 
     def __repr__(self) -> str:
-        return f"<Servico {self.id} - {self.nome}>"
+        return f"<PrecoServico {self.id}>"

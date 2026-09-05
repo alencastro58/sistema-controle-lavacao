@@ -7,6 +7,7 @@ from .ordem_servico import OrdemServico
 from .servico import Servico
 from .item_ordem_servico import ItemOrdemServico
 from .lavagem import Lavagem
+from .preco_servico import PrecoServico
 
 __all__ = [
     "Cliente",
@@ -14,4 +15,9 @@ __all__ = [
     "Modelo",
     "PorteVeiculo",
     "Veiculo",
+    "OrdemServico",
+    "Servico",
+    "ItemOrdemServico",
+    "Lavagem",
+    "PrecoServico",
 ]

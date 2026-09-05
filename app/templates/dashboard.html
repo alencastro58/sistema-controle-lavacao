@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Sistema de Controle de Lavação</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Dashboard</h1>
+        <p>Sistema de Controle de Lavação</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Visão geral</h2>
+
+            <div class="indicadores">
+                <div class="indicador">
+                    <h3>Total de ordens de serviço</h3>
+                    <p id="total-ordens">Carregando...</p>
+                </div>
+
+                <div class="indicador">
+                    <h3>Ordens abertas</h3>
+                    <p id="ordens-abertas">Carregando...</p>
+                </div>
+
+                <div class="indicador">
+                    <h3>Ordens concluídas</h3>
+                    <p id="ordens-concluidas">Carregando...</p>
+                </div>
+
+                <div class="indicador">
+                    <h3>Total de lavagens</h3>
+                    <p id="total-lavagens">Carregando...</p>
+                </div>
+
+                <div class="indicador">
+                    <h3>Lavagens aguardando início</h3>
+                    <p id="lavagens-aguardando">Carregando...</p>
+                </div>
+
+                <div class="indicador">
+                    <h3>Lavagens em andamento</h3>
+                    <p id="lavagens-andamento">Carregando...</p>
+                </div>
+
+                <div class="indicador">
+                    <h3>Lavagens concluídas</h3>
+                    <p id="lavagens-concluidas">Carregando...</p>
+                </div>
+
+                <div class="indicador">
+                    <h3>Valor total das ordens</h3>
+                    <p id="valor-total">Carregando...</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Acessos rápidos</h2>
+
+            <nav>
+                <ul>
+                    <li><a href="/">Página inicial</a></li>
+                    <li><a href="/ordens-servico">Ordens de Serviço</a></li>
+                    <li><a href="/lavagens">Lavagens</a></li>
+                    <li><a href="/precos-servicos">Preços de Serviços</a></li>
+                </ul>
+            </nav>
+        </section>
+    </main>
+
+    <script>
+        async function carregarDashboard() {
+            try {
+                const [ordensResponse, lavagensResponse] = await Promise.all([
+                    fetch("/ordens-servico"),
+                    fetch("/lavagens")
+                ]);
+
+                if (!ordensResponse.ok || !lavagensResponse.ok) {
+                    throw new Error("Não foi possível carregar os dados.");
+                }
+
+                const ordens = await ordensResponse.json();
+                const lavagens = await lavagensResponse.json();
+
+                const ordensAbertas = ordens.filter(
+                    ordem => ordem.status === "ABERTA"
+                );
+
+                const ordensConcluidas = ordens.filter(
+                    ordem => ordem.status === "CONCLUIDA"
+                );
+
+                const lavagensAguardando = lavagens.filter(
+                    lavagem => lavagem.status === "AGUARDANDO"
+                );
+
+                const lavagensAndamento = lavagens.filter(
+                    lavagem => lavagem.status === "EM_ANDAMENTO"
+                );
+
+                const lavagensConcluidas = lavagens.filter(
+                    lavagem => lavagem.status === "CONCLUIDA"
+                );
+
+                const valorTotal = ordens.reduce(
+                    (total, ordem) => total + Number(ordem.valor_total || 0),
+                    0
+                );
+
+                document.getElementById("total-ordens").textContent = ordens.length;
+                document.getElementById("ordens-abertas").textContent = ordensAbertas.length;
+                document.getElementById("ordens-concluidas").textContent = ordensConcluidas.length;
+                document.getElementById("total-lavagens").textContent = lavagens.length;
+                document.getElementById("lavagens-aguardando").textContent = lavagensAguardando.length;
+                document.getElementById("lavagens-andamento").textContent = lavagensAndamento.length;
+                document.getElementById("lavagens-concluidas").textContent = lavagensConcluidas.length;
+                document.getElementById("valor-total").textContent = valorTotal.toLocaleString(
+                    "pt-BR",
+                    {
+                        style: "currency",
+                        currency: "BRL"
+                    }
+                );
+            } catch (erro) {
+                document.getElementById("total-ordens").textContent = "Erro";
+                document.getElementById("ordens-abertas").textContent = "Erro";
+                document.getElementById("ordens-concluidas").textContent = "Erro";
+                document.getElementById("total-lavagens").textContent = "Erro";
+                document.getElementById("lavagens-aguardando").textContent = "Erro";
+                document.getElementById("lavagens-andamento").textContent = "Erro";
+                document.getElementById("lavagens-concluidas").textContent = "Erro";
+                document.getElementById("valor-total").textContent = "Erro";
+
+                console.error("Erro ao carregar dashboard:", erro);
+            }
+        }
+
+        carregarDashboard();
+    </script>
+</body>
+</html>

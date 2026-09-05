@@ -32,9 +32,29 @@ def _ordem_servico_para_json(ordem_servico) -> dict:
             else 0
         ),
         "status": ordem_servico.status,
+        "pagamento_confirmado": ordem_servico.pagamento_confirmado,
+        "pagamento_confirmado_em": (
+            ordem_servico.pagamento_confirmado_em.isoformat()
+            if ordem_servico.pagamento_confirmado_em
+            else None
+        ),
+        "veiculo_entregue": ordem_servico.veiculo_entregue,
+        "veiculo_entregue_em": (
+            ordem_servico.veiculo_entregue_em.isoformat()
+            if ordem_servico.veiculo_entregue_em
+            else None
+        ),
         "observacoes": ordem_servico.observacoes,
-        "criado_em": ordem_servico.criado_em.isoformat(),
-        "atualizado_em": ordem_servico.atualizado_em.isoformat(),
+        "criado_em": (
+            ordem_servico.criado_em.isoformat()
+            if ordem_servico.criado_em
+            else None
+        ),
+        "atualizado_em": (
+            ordem_servico.atualizado_em.isoformat()
+            if ordem_servico.atualizado_em
+            else None
+        ),
     }
 
 
@@ -68,13 +88,18 @@ def criar_ordem_servico():
                 }
             ), 400
 
-    ordem_servico = OrdemServicoService.criar(dados)
+    try:
+        ordem_servico = OrdemServicoService.criar(dados)
 
-    db.session.commit()
+        db.session.commit()
 
-    return jsonify(
-        _ordem_servico_para_json(ordem_servico)
-    ), 201
+        return jsonify(
+            _ordem_servico_para_json(ordem_servico)
+        ), 201
+
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 @ordem_servico_bp.get("/ordens-servico/<int:ordem_servico_id>")
@@ -93,6 +118,87 @@ def buscar_ordem_servico(ordem_servico_id: int):
     return jsonify(
         _ordem_servico_para_json(ordem_servico)
     ), 200
+
+
+@ordem_servico_bp.patch("/ordens-servico/<int:ordem_servico_id>/status")
+def alterar_status_ordem_servico(ordem_servico_id: int):
+    ordem_servico = OrdemServicoService.buscar_por_id(
+        ordem_servico_id
+    )
+
+    if ordem_servico is None:
+        return jsonify(
+            {
+                "erro": "Ordem de Serviço não encontrada.",
+            }
+        ), 404
+
+    dados = request.get_json(silent=True) or {}
+    novo_status = dados.get("status")
+
+    if novo_status is None:
+        return jsonify(
+            {
+                "erro": "status é obrigatório.",
+            }
+        ), 400
+
+    try:
+        OrdemServicoService.alterar_status(
+            ordem_servico,
+            novo_status,
+        )
+
+        db.session.commit()
+
+        return jsonify(
+            _ordem_servico_para_json(ordem_servico)
+        ), 200
+
+    except ValueError as erro:
+        db.session.rollback()
+
+        return jsonify(
+            {
+                "erro": str(erro),
+            }
+        ), 400
+
+
+@ordem_servico_bp.post(
+    "/ordens-servico/<int:ordem_servico_id>/confirmar-pagamento"
+)
+def confirmar_pagamento_ordem_servico(ordem_servico_id: int):
+    ordem_servico = OrdemServicoService.buscar_por_id(
+        ordem_servico_id
+    )
+
+    if ordem_servico is None:
+        return jsonify(
+            {
+                "erro": "Ordem de Serviço não encontrada.",
+            }
+        ), 404
+
+    try:
+        OrdemServicoService.confirmar_pagamento(
+            ordem_servico
+        )
+
+        db.session.commit()
+
+        return jsonify(
+            _ordem_servico_para_json(ordem_servico)
+        ), 200
+
+    except ValueError as erro:
+        db.session.rollback()
+
+        return jsonify(
+            {
+                "erro": str(erro),
+            }
+        ), 400
 
 
 @ordem_servico_bp.delete("/ordens-servico/<int:ordem_servico_id>")

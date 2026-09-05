@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordens de Serviço | Sistema de Controle de Lavação</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Ordens de Serviço</h1>
+        <p>Gestão das ordens de serviço da lavação</p>
+    </header>
+
+    <main>
+        <section class="barra-pagina">
+            <div>
+                <h2>Lista de Ordens de Serviço</h2>
+                <p>Consulte as ordens cadastradas no sistema.</p>
+            </div>
+
+            <a class="botao" href="/dashboard">Voltar ao Dashboard</a>
+        </section>
+
+        <section class="painel">
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Cliente</th>
+                            <th>Veículo</th>
+                            <th>Agendamento</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Pagamento</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="ordens-tabela">
+                        <tr>
+                            <td colspan="7">Carregando ordens...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function formatarMoeda(valor) {
+            return Number(valor || 0).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL"
+            });
+        }
+
+        function formatarData(data) {
+            if (!data) {
+                return "-";
+            }
+
+            return new Date(data).toLocaleDateString("pt-BR");
+        }
+
+        function classeStatus(status) {
+            return `status status-${String(status).toLowerCase()}`;
+        }
+
+        async function carregarOrdens() {
+            const tabela = document.getElementById("ordens-tabela");
+
+            try {
+                const resposta = await fetch("/ordens-servico");
+
+                if (!resposta.ok) {
+                    throw new Error("Não foi possível carregar as ordens.");
+                }
+
+                const ordens = await resposta.json();
+
+                if (ordens.length === 0) {
+                    tabela.innerHTML = `
+                        <tr>
+                            <td colspan="7">Nenhuma ordem de serviço cadastrada.</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tabela.innerHTML = ordens.map(ordem => `
+                    <tr>
+                        <td><strong>${ordem.numero}</strong></td>
+                        <td>${ordem.cliente_id}</td>
+                        <td>${ordem.veiculo_id}</td>
+                        <td>${formatarData(ordem.data_agendamento)}</td>
+                        <td>${formatarMoeda(ordem.valor_total)}</td>
+                        <td>
+                            <span class="${classeStatus(ordem.status)}">
+                                ${ordem.status}
+                            </span>
+                        </td>
+                        <td>
+                            ${ordem.pagamento_confirmado ? "Confirmado" : "Pendente"}
+                        </td>
+                    </tr>
+                `).join("");
+
+            } catch (erro) {
+                tabela.innerHTML = `
+                    <tr>
+                        <td colspan="7">Erro ao carregar as ordens de serviço.</td>
+                    </tr>
+                `;
+
+                console.error("Erro ao carregar ordens:", erro);
+            }
+        }
+
+        carregarOrdens();
+    </script>
+</body>
+</html>

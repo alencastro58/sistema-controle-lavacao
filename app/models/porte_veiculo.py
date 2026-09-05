@@ -33,6 +33,11 @@ class PorteVeiculo(db.Model):
             name="uq_portes_veiculo_nome",
         ),
     )
+    
+    precos_servicos = db.relationship(
+        "PrecoServico",
+        back_populates="porte",
+    )
 
     def __repr__(self) -> str:
         return f"<PorteVeiculo {self.id} - {self.nome}>"

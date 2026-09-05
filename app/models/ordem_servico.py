@@ -9,7 +9,11 @@ from ..extensions import db
 class OrdemServico(db.Model):
     __tablename__ = "ordens_servico"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+    )
 
     numero: Mapped[str] = mapped_column(
         String(20),
@@ -50,6 +54,26 @@ class OrdemServico(db.Model):
         String(20),
         nullable=False,
         default="ABERTA",
+    )
+
+    pagamento_confirmado: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+    )
+
+    pagamento_confirmado_em: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    veiculo_entregue: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+    )
+
+    veiculo_entregue_em: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
     )
 
     observacoes: Mapped[str | None] = mapped_column(

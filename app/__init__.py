@@ -9,6 +9,7 @@ from .routes.lavagem import lavagem_bp
 from .routes.ordem_servico import ordem_servico_bp
 from .routes.ordem_servico_web import ordem_servico_web_bp
 from .routes.preco_servico import preco_servico_bp
+from .routes.cliente_web import cliente_web_bp
 from . import models
 
 
@@ -25,5 +26,6 @@ def create_app():
     app.register_blueprint(ordem_servico_bp)
     app.register_blueprint(ordem_servico_web_bp)
     app.register_blueprint(preco_servico_bp)
+    app.register_blueprint(cliente_web_bp)
 
     return app

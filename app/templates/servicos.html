@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serviços e Preços | Sistema de Controle de Lavação</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Serviços e Preços</h1>
+        <p>Consulta dos serviços cadastrados e manutenção dos preços por porte de veículo.</p>
+    </header>
+
+    <main>
+        <nav>
+            <a href="/dashboard">Dashboard</a> |
+            <a href="/clientes">Clientes</a> |
+            <a href="/veiculos">Veículos</a> |
+            <a href="/ordens-servico">Ordens de Serviço</a>
+        </nav>
+
+        {% if erro %}
+            <section>
+                <p><strong>Erro:</strong> {{ erro }}</p>
+            </section>
+        {% endif %}
+
+        <section>
+            <h2>Cadastrar preço</h2>
+
+            <form method="post" action="{{ url_for('servico_web.criar_preco') }}">
+                <div>
+                    <label for="servico_id">Serviço</label>
+                    <select id="servico_id" name="servico_id" required>
+                        <option value="">Selecione</option>
+                        {% for servico in servicos %}
+                            <option value="{{ servico.id }}">
+                                {{ servico.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="porte_id">Porte do veículo</label>
+                    <select id="porte_id" name="porte_id" required>
+                        <option value="">Selecione</option>
+                        {% for porte in portes %}
+                            <option value="{{ porte.id }}">
+                                {{ porte.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="valor">Valor</label>
+                    <input
+                        type="text"
+                        id="valor"
+                        name="valor"
+                        placeholder="0,00"
+                        required
+                    >
+                </div>
+
+                <button type="submit">Cadastrar preço</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Serviços cadastrados</h2>
+
+            {% if servicos %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Valor padrão</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for servico in servicos %}
+                            <tr>
+                                <td>{{ servico.id }}</td>
+                                <td>{{ servico.nome }}</td>
+                                <td>{{ servico.descricao or "-" }}</td>
+                                <td>
+                                    R$ {{ "%.2f"|format(servico.valor|float) }}
+                                </td>
+                                <td>
+                                    {% if servico.ativo %}
+                                        Ativo
+                                    {% else %}
+                                        Inativo
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Nenhum serviço cadastrado.</p>
+            {% endif %}
+        </section>
+
+        <section>
+            <h2>Preços por porte de veículo</h2>
+
+            {% if precos %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Serviço</th>
+                            <th>Porte</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for preco in precos %}
+                            <tr>
+                                <td>{{ preco.id }}</td>
+                                <td>{{ preco.servico.nome }}</td>
+                                <td>{{ preco.porte.nome }}</td>
+                                <td>
+                                    R$ {{ "%.2f"|format(preco.valor|float) }}
+                                </td>
+                                <td>
+                                    {% if preco.ativo %}
+                                        Ativo
+                                    {% else %}
+                                        Inativo
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form
+                                        method="post"
+                                        action="{{ url_for('servico_web.excluir_preco', preco_servico_id=preco.id) }}"
+                                    >
+                                        <button type="submit">
+                                            Excluir
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Nenhum preço cadastrado.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

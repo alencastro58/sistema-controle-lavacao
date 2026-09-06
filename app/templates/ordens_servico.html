@@ -34,15 +34,39 @@
                             <th>Valor</th>
                             <th>Status</th>
                             <th>Pagamento</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
 
                     <tbody id="ordens-tabela">
                         <tr>
-                            <td colspan="7">Carregando ordens...</td>
+                            <td colspan="8">Carregando ordens...</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        <section class="painel" id="painel-detalhes" hidden>
+            <div class="barra-pagina">
+                <div>
+                    <h2 id="detalhes-titulo">Detalhes da Ordem de Serviço</h2>
+                    <p id="detalhes-subtitulo">
+                        Consulte os dados e os serviços da ordem selecionada.
+                    </p>
+                </div>
+
+                <button
+                    class="botao"
+                    type="button"
+                    id="botao-fechar-detalhes"
+                >
+                    Fechar
+                </button>
+            </div>
+
+            <div id="detalhes-conteudo">
+                <p>Selecione uma ordem de serviço para visualizar os detalhes.</p>
             </div>
         </section>
     </main>
@@ -63,8 +87,97 @@
             return new Date(data).toLocaleDateString("pt-BR");
         }
 
+        function formatarDataHora(data) {
+            if (!data) {
+                return "-";
+            }
+
+            return new Date(data).toLocaleString("pt-BR");
+        }
+
         function classeStatus(status) {
             return `status status-${String(status).toLowerCase()}`;
+        }
+
+        function escaparHtml(valor) {
+            return String(valor ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function textoStatus(status) {
+            const nomes = {
+                ABERTA: "Aberta",
+                EM_ANDAMENTO: "Em andamento",
+                CONCLUIDA: "Concluída",
+                CANCELADA: "Cancelada"
+            };
+
+            return nomes[status] || status || "-";
+        }
+
+        function textoPagamento(confirmado) {
+            return confirmado ? "Confirmado" : "Pendente";
+        }
+
+        function botoesAcao(ordem) {
+            const botoes = [];
+
+            if (ordem.status === "ABERTA") {
+                botoes.push(`
+                    <button
+                        class="botao"
+                        type="button"
+                        onclick="alterarStatus(${ordem.id}, 'EM_ANDAMENTO')"
+                    >
+                        Iniciar
+                    </button>
+                `);
+            }
+
+            if (ordem.status === "EM_ANDAMENTO") {
+                botoes.push(`
+                    <button
+                        class="botao"
+                        type="button"
+                        onclick="alterarStatus(${ordem.id}, 'CONCLUIDA')"
+                    >
+                        Concluir
+                    </button>
+                `);
+            }
+
+            if (ordem.status === "ABERTA") {
+                botoes.push(`
+                    <button
+                        class="botao"
+                        type="button"
+                        onclick="alterarStatus(${ordem.id}, 'CANCELADA')"
+                    >
+                        Cancelar
+                    </button>
+                `);
+            }
+
+            if (
+                !ordem.pagamento_confirmado &&
+                ordem.status !== "CANCELADA"
+            ) {
+                botoes.push(`
+                    <button
+                        class="botao"
+                        type="button"
+                        onclick="confirmarPagamento(${ordem.id})"
+                    >
+                        Confirmar pagamento
+                    </button>
+                `);
+            }
+
+            return botoes.join("");
         }
 
         async function carregarOrdens() {
@@ -82,7 +195,9 @@
                 if (ordens.length === 0) {
                     tabela.innerHTML = `
                         <tr>
-                            <td colspan="7">Nenhuma ordem de serviço cadastrada.</td>
+                            <td colspan="8">
+                                Nenhuma ordem de serviço cadastrada.
+                            </td>
                         </tr>
                     `;
                     return;
@@ -90,18 +205,38 @@
 
                 tabela.innerHTML = ordens.map(ordem => `
                     <tr>
-                        <td><strong>${ordem.numero}</strong></td>
-                        <td>${ordem.cliente_id}</td>
-                        <td>${ordem.veiculo_id}</td>
+                        <td>
+                            <strong>${escaparHtml(ordem.numero)}</strong>
+                        </td>
+
+                        <td>${escaparHtml(ordem.cliente_id)}</td>
+
+                        <td>${escaparHtml(ordem.veiculo_id)}</td>
+
                         <td>${formatarData(ordem.data_agendamento)}</td>
+
                         <td>${formatarMoeda(ordem.valor_total)}</td>
+
                         <td>
                             <span class="${classeStatus(ordem.status)}">
-                                ${ordem.status}
+                                ${escaparHtml(textoStatus(ordem.status))}
                             </span>
                         </td>
+
                         <td>
-                            ${ordem.pagamento_confirmado ? "Confirmado" : "Pendente"}
+                            ${escaparHtml(
+                                textoPagamento(ordem.pagamento_confirmado)
+                            )}
+                        </td>
+
+                        <td>
+                            <button
+                                class="botao"
+                                type="button"
+                                onclick="carregarDetalhes(${ordem.id})"
+                            >
+                                Detalhes
+                            </button>
                         </td>
                     </tr>
                 `).join("");
@@ -109,13 +244,251 @@
             } catch (erro) {
                 tabela.innerHTML = `
                     <tr>
-                        <td colspan="7">Erro ao carregar as ordens de serviço.</td>
+                        <td colspan="8">
+                            Erro ao carregar as ordens de serviço.
+                        </td>
                     </tr>
                 `;
 
                 console.error("Erro ao carregar ordens:", erro);
             }
         }
+
+        async function carregarDetalhes(ordemId) {
+            const painel = document.getElementById("painel-detalhes");
+            const conteudo = document.getElementById("detalhes-conteudo");
+            const titulo = document.getElementById("detalhes-titulo");
+            const subtitulo = document.getElementById("detalhes-subtitulo");
+
+            painel.hidden = false;
+            conteudo.innerHTML = "<p>Carregando detalhes...</p>";
+
+            try {
+                const resposta = await fetch(
+                    `/ordens-servico/${ordemId}`
+                );
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        "Não foi possível carregar os detalhes."
+                    );
+                }
+
+                const ordem = await resposta.json();
+
+                titulo.textContent =
+                    `Ordem de Serviço ${ordem.numero}`;
+
+                subtitulo.textContent =
+                    "Dados, serviços, valores e situação da ordem.";
+
+                const itens = ordem.itens || [];
+
+                const itensHtml = itens.length === 0
+                    ? `
+                        <tr>
+                            <td colspan="6">
+                                Nenhum serviço registrado nesta ordem.
+                            </td>
+                        </tr>
+                    `
+                    : itens.map(item => `
+                        <tr>
+                            <td>
+                                ${escaparHtml(
+                                    item.servico_nome || item.servico_id
+                                )}
+                            </td>
+                            <td>${item.quantidade}</td>
+                            <td>${formatarMoeda(item.valor_unitario)}</td>
+                            <td>${formatarMoeda(item.valor_bruto)}</td>
+                            <td>${formatarMoeda(item.desconto)}</td>
+                            <td>${formatarMoeda(item.valor_final)}</td>
+                        </tr>
+                    `).join("");
+
+                conteudo.innerHTML = `
+                    <div class="detalhes-grid">
+                        <div>
+                            <strong>Número</strong>
+                            <span>${escaparHtml(ordem.numero)}</span>
+                        </div>
+
+                        <div>
+                            <strong>Cliente</strong>
+                            <span>${escaparHtml(ordem.cliente_id)}</span>
+                        </div>
+
+                        <div>
+                            <strong>Veículo</strong>
+                            <span>${escaparHtml(ordem.veiculo_id)}</span>
+                        </div>
+
+                        <div>
+                            <strong>Agendamento</strong>
+                            <span>${formatarData(ordem.data_agendamento)}</span>
+                        </div>
+
+                        <div>
+                            <strong>Status</strong>
+                            <span class="${classeStatus(ordem.status)}">
+                                ${escaparHtml(textoStatus(ordem.status))}
+                            </span>
+                        </div>
+
+                        <div>
+                            <strong>Pagamento</strong>
+                            <span>
+                                ${escaparHtml(
+                                    textoPagamento(
+                                        ordem.pagamento_confirmado
+                                    )
+                                )}
+                            </span>
+                        </div>
+
+                        <div>
+                            <strong>Valor total</strong>
+                            <span>${formatarMoeda(ordem.valor_total)}</span>
+                        </div>
+
+                        <div>
+                            <strong>Desconto</strong>
+                            <span>${formatarMoeda(ordem.desconto)}</span>
+                        </div>
+
+                        <div>
+                            <strong>Veículo entregue</strong>
+                            <span>
+                                ${ordem.veiculo_entregue ? "Sim" : "Não"}
+                            </span>
+                        </div>
+
+                        <div>
+                            <strong>Pagamento confirmado em</strong>
+                            <span>
+                                ${formatarDataHora(
+                                    ordem.pagamento_confirmado_em
+                                )}
+                            </span>
+                        </div>
+
+                        <div>
+                            <strong>Veículo entregue em</strong>
+                            <span>
+                                ${formatarDataHora(
+                                    ordem.veiculo_entregue_em
+                                )}
+                            </span>
+                        </div>
+
+                        <div>
+                            <strong>Observações</strong>
+                            <span>
+                                ${escaparHtml(ordem.observacoes || "-")}
+                            </span>
+                        </div>
+                    </div>
+
+                    <h3>Serviços da ordem</h3>
+
+                    <div class="tabela-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Serviço</th>
+                                    <th>Quantidade</th>
+                                    <th>Valor unitário</th>
+                                    <th>Valor bruto</th>
+                                    <th>Desconto</th>
+                                    <th>Valor final</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                ${itensHtml}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="acoes-detalhes">
+                        ${botoesAcao(ordem)}
+                    </div>
+                `;
+            } catch (erro) {
+                conteudo.innerHTML = `
+                    <p>
+                        Erro ao carregar os detalhes da ordem de serviço.
+                    </p>
+                `;
+
+                console.error("Erro ao carregar detalhes:", erro);
+            }
+        }
+
+        async function alterarStatus(ordemId, status) {
+            try {
+                const resposta = await fetch(
+                    `/ordens-servico/${ordemId}/status`,
+                    {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ status })
+                    }
+                );
+
+                const resultado = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        resultado.erro ||
+                        "Não foi possível alterar o status."
+                    );
+                }
+
+                await carregarOrdens();
+                await carregarDetalhes(ordemId);
+
+                alert("Status alterado com sucesso.");
+            } catch (erro) {
+                alert(erro.message);
+            }
+        }
+
+        async function confirmarPagamento(ordemId) {
+            try {
+                const resposta = await fetch(
+                    `/ordens-servico/${ordemId}/confirmar-pagamento`,
+                    {
+                        method: "POST"
+                    }
+                );
+
+                const resultado = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        resultado.erro ||
+                        "Não foi possível confirmar o pagamento."
+                    );
+                }
+
+                await carregarOrdens();
+                await carregarDetalhes(ordemId);
+
+                alert("Pagamento confirmado com sucesso.");
+            } catch (erro) {
+                alert(erro.message);
+            }
+        }
+
+        document
+            .getElementById("botao-fechar-detalhes")
+            .addEventListener("click", () => {
+                document.getElementById("painel-detalhes").hidden = true;
+            });
 
         carregarOrdens();
     </script>

@@ -9,9 +9,9 @@ from app.models import (
     Cliente,
     Marca,
     Modelo,
+    OrdemServico,
     PorteVeiculo,
     Veiculo,
-    OrdemServico,
 )
 
 
@@ -353,6 +353,7 @@ def test_buscar_ordem_servico_metodo_nao_permitido(
 
     assert response.status_code == 405
 
+
 def test_listar_ordens_servico(
     client,
     ordem_servico_dados,
@@ -360,6 +361,7 @@ def test_listar_ordens_servico(
     numero_1 = (
         f"OS-L-{ordem_servico_dados['identificador']}-1"
     )
+
     numero_2 = (
         f"OS-L-{ordem_servico_dados['identificador']}-2"
     )
@@ -452,4 +454,17 @@ def test_listar_ordens_servico_metodo_nao_permitido(
     assert response.status_code == 405
 
 
+def test_buscar_ordem_servico_retorna_itens(
+    client,
+    dados_preco_automatico,
+):
+    response = client.get(
+        f"/ordens-servico/{dados_preco_automatico['ordem_servico_id']}"
+    )
 
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert "itens" in data
+    assert data["itens"] == []

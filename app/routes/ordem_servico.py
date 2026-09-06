@@ -10,6 +10,50 @@ ordem_servico_bp = Blueprint(
 )
 
 
+def _item_ordem_servico_para_json(item) -> dict:
+    return {
+        "id": item.id,
+        "ordem_servico_id": item.ordem_servico_id,
+        "servico_id": item.servico_id,
+        "servico_nome": (
+            item.servico.nome
+            if item.servico is not None
+            else None
+        ),
+        "quantidade": (
+            float(item.quantidade)
+            if item.quantidade is not None
+            else 0
+        ),
+        "valor_unitario": (
+            float(item.valor_unitario)
+            if item.valor_unitario is not None
+            else 0
+        ),
+        "desconto": (
+            float(item.desconto)
+            if item.desconto is not None
+            else 0
+        ),
+        "tipo_desconto": item.tipo_desconto,
+        "valor_bruto": float(item.valor_bruto),
+        "valor_final": float(item.valor_final),
+        "percentual_desconto": float(
+            item.percentual_desconto
+        ),
+        "criado_em": (
+            item.criado_em.isoformat()
+            if item.criado_em
+            else None
+        ),
+        "atualizado_em": (
+            item.atualizado_em.isoformat()
+            if item.atualizado_em
+            else None
+        ),
+    }
+
+
 def _ordem_servico_para_json(ordem_servico) -> dict:
     return {
         "id": ordem_servico.id,
@@ -115,9 +159,14 @@ def buscar_ordem_servico(ordem_servico_id: int):
             }
         ), 404
 
-    return jsonify(
-        _ordem_servico_para_json(ordem_servico)
-    ), 200
+    resposta = _ordem_servico_para_json(ordem_servico)
+
+    resposta["itens"] = [
+        _item_ordem_servico_para_json(item)
+        for item in ordem_servico.itens
+    ]
+
+    return jsonify(resposta), 200
 
 
 @ordem_servico_bp.patch("/ordens-servico/<int:ordem_servico_id>/status")

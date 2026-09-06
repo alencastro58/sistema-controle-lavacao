@@ -1,0 +1,240 @@
+@'
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veículos - Sistema de Controle de Lavagem</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+    <header class="cabecalho">
+        <h1>Sistema de Controle de Lavagem</h1>
+        <p>Gestão de veículos</p>
+    </header>
+
+    <main>
+        <div class="barra-pagina">
+            <div>
+                <h2>Veículos</h2>
+                <p class="descricao">
+                    Consulte e cadastre os veículos dos clientes.
+                </p>
+            </div>
+
+            <a
+                href="{{ url_for('dashboard.dashboard') }}"
+                class="botao botao-secundario"
+            >
+                Voltar ao dashboard
+            </a>
+        </div>
+
+        <section class="painel">
+            <div class="painel-cabecalho">
+                <div>
+                    <h2>Novo veículo</h2>
+                    <p class="descricao">
+                        Preencha os dados para cadastrar um veículo.
+                    </p>
+                </div>
+            </div>
+
+            {% if erro %}
+                <div class="mensagem">
+                    <p>{{ erro }}</p>
+                </div>
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ url_for('veiculo_web.criar_veiculo') }}"
+                class="formulario"
+            >
+                <div class="campo">
+                    <label for="cliente_id">Cliente</label>
+                    <select id="cliente_id" name="cliente_id" required>
+                        <option value="">Selecione</option>
+                        {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">
+                                {{ cliente.nome_razao_social }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="campo">
+                    <label for="modelo_id">Modelo</label>
+                    <select id="modelo_id" name="modelo_id" required>
+                        <option value="">Selecione</option>
+                        {% for modelo in modelos %}
+                            <option value="{{ modelo.id }}">
+                                {{ modelo.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="campo">
+                    <label for="porte_id">Porte do veículo</label>
+                    <select id="porte_id" name="porte_id" required>
+                        <option value="">Selecione</option>
+                        {% for porte in portes %}
+                            <option value="{{ porte.id }}">
+                                {{ porte.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="campo">
+                    <label for="placa">Placa</label>
+                    <input
+                        type="text"
+                        id="placa"
+                        name="placa"
+                        maxlength="10"
+                        required
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="cor">Cor</label>
+                    <input
+                        type="text"
+                        id="cor"
+                        name="cor"
+                        maxlength="50"
+                        required
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="ano_fabricacao">Ano de fabricação</label>
+                    <input
+                        type="number"
+                        id="ano_fabricacao"
+                        name="ano_fabricacao"
+                        min="1900"
+                        max="2100"
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="ano_modelo">Ano do modelo</label>
+                    <input
+                        type="number"
+                        id="ano_modelo"
+                        name="ano_modelo"
+                        min="1900"
+                        max="2100"
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="renavam">RENAVAM</label>
+                    <input
+                        type="text"
+                        id="renavam"
+                        name="renavam"
+                        maxlength="11"
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="chassi">Chassi</label>
+                    <input
+                        type="text"
+                        id="chassi"
+                        name="chassi"
+                        maxlength="17"
+                    >
+                </div>
+
+                <div class="campo campo-largo">
+                    <label for="observacoes">Observações</label>
+                    <textarea
+                        id="observacoes"
+                        name="observacoes"
+                        rows="4"
+                    ></textarea>
+                </div>
+
+                <div class="acoes-formulario">
+                    <button type="submit" class="botao">
+                        Cadastrar veículo
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="painel">
+            <div class="painel-cabecalho">
+                <div>
+                    <h2>Veículos cadastrados</h2>
+                    <p class="descricao">
+                        Total de veículos: {{ veiculos|length }}
+                    </p>
+                </div>
+            </div>
+
+            {% if veiculos %}
+                <div class="tabela-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Placa</th>
+                                <th>Cliente</th>
+                                <th>Modelo</th>
+                                <th>Porte</th>
+                                <th>Cor</th>
+                                <th>Ano</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for veiculo in veiculos %}
+                                <tr>
+                                    <td>{{ veiculo.id }}</td>
+                                    <td>{{ veiculo.placa }}</td>
+                                    <td>
+                                        {{ veiculo.cliente.nome_razao_social }}
+                                    </td>
+                                    <td>
+                                        {{ veiculo.modelo.nome }}
+                                    </td>
+                                    <td>
+                                        {{ veiculo.porte.nome }}
+                                    </td>
+                                    <td>{{ veiculo.cor }}</td>
+                                    <td>
+                                        {{ veiculo.ano_modelo or
+                                           veiculo.ano_fabricacao or '-' }}
+                                    </td>
+                                    <td>
+                                        {% if veiculo.ativo %}
+                                            Ativo
+                                        {% else %}
+                                            Inativo
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="mensagem">
+                    <p>Nenhum veículo cadastrado.</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <p class="rodape-pagina">
+            Sistema de Controle de Lavagem
+        </p>
+    </main>
+</body>
+</html>
+'@ | Set-Content -Path .\app\templates\veiculos.html -Encoding UTF8

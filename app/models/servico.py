@@ -50,14 +50,24 @@ class Servico(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    
+
     itens_ordem_servico = relationship(
         "ItemOrdemServico",
         back_populates="servico",
     )
-    
+
     precos = relationship(
         "PrecoServico",
+        back_populates="servico",
+    )
+
+    regras_fidelidade = relationship(
+        "RegraFidelidade",
+        back_populates="servico",
+    )
+
+    beneficios_fidelidade = relationship(
+        "BeneficioFidelidade",
         back_populates="servico",
     )
 

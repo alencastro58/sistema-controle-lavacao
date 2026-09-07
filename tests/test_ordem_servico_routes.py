@@ -468,3 +468,165 @@ def test_buscar_ordem_servico_retorna_itens(
 
     assert "itens" in data
     assert data["itens"] == []
+
+
+def test_editar_ordem_servico_numero_e_observacoes(
+    client,
+    ordem_servico_dados,
+):
+    numero_original = (
+        f"OS-E-{ordem_servico_dados['identificador']}"
+    )
+
+    ordem_servico = OrdemServico(
+        numero=numero_original,
+        cliente_id=ordem_servico_dados["cliente_id"],
+        veiculo_id=ordem_servico_dados["veiculo_id"],
+        valor_total=100,
+        desconto=0,
+        status="ABERTA",
+        observacoes="Original",
+    )
+
+    db.session.add(ordem_servico)
+    db.session.commit()
+
+    numero_alterado = (
+        f"OS-A-{ordem_servico_dados['identificador']}"
+    )
+
+    response = client.patch(
+        f"/ordens-servico/{ordem_servico.id}",
+        json={
+            "numero": numero_alterado,
+            "observacoes": "Atualizada",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["id"] == ordem_servico.id
+    assert data["numero"] == numero_alterado
+    assert data["observacoes"] == "Atualizada"
+    assert data["status"] == "ABERTA"
+
+
+def test_editar_ordem_servico_com_itens(
+    client,
+    dados_preco_automatico,
+):
+    response = client.patch(
+        f"/ordens-servico/{dados_preco_automatico['ordem_servico_id']}",
+        json={
+            "numero": "OS-EDIT-ITEM-001",
+            "itens": [
+                {
+                    "servico_id": dados_preco_automatico["servico_id"],
+                    "quantidade": 2,
+                }
+            ],
+            "desconto": 25,
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["numero"] == "OS-EDIT-ITEM-001"
+    assert data["valor_total"] == 225.0
+    assert data["desconto"] == 25.0
+    assert len(data["itens"]) == 1
+    assert data["itens"][0]["quantidade"] == 2.0
+    assert data["itens"][0]["valor_unitario"] == 125.0
+    assert data["itens"][0]["valor_final"] == 250.0
+
+
+def test_editar_ordem_servico_inexistente(
+    client,
+):
+    response = client.patch(
+        "/ordens-servico/999999",
+        json={
+            "numero": "OS-INEXISTENTE",
+        },
+    )
+
+    assert response.status_code == 404
+
+    data = response.get_json()
+
+    assert data["erro"] == "Ordem de Serviço não encontrada."
+
+
+def test_editar_ordem_servico_json_invalido(
+    client,
+    ordem_servico_dados,
+):
+    numero = (
+        f"OS-J-{ordem_servico_dados['identificador']}"
+    )
+
+    ordem_servico = OrdemServico(
+        numero=numero,
+        cliente_id=ordem_servico_dados["cliente_id"],
+        veiculo_id=ordem_servico_dados["veiculo_id"],
+        valor_total=100,
+        desconto=0,
+        status="ABERTA",
+    )
+
+    db.session.add(ordem_servico)
+    db.session.commit()
+
+    response = client.patch(
+        f"/ordens-servico/{ordem_servico.id}",
+        json=[],
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert data["erro"] == (
+        "O corpo da requisição deve ser um objeto JSON."
+    )
+
+
+def test_editar_ordem_servico_concluida(
+    client,
+    ordem_servico_dados,
+):
+    numero = (
+        f"OS-C-{ordem_servico_dados['identificador']}"
+    )
+
+    ordem_servico = OrdemServico(
+        numero=numero,
+        cliente_id=ordem_servico_dados["cliente_id"],
+        veiculo_id=ordem_servico_dados["veiculo_id"],
+        valor_total=100,
+        desconto=0,
+        status="CONCLUIDA",
+    )
+
+    db.session.add(ordem_servico)
+    db.session.commit()
+
+    response = client.patch(
+        f"/ordens-servico/{ordem_servico.id}",
+        json={
+            "observacoes": "Tentativa de alteração",
+        },
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert data["erro"] == (
+        "Não é possível editar uma Ordem de Serviço "
+        "concluída ou cancelada."
+    )

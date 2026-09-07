@@ -76,6 +76,162 @@ class OrdemServicoService:
 
         OrdemServicoRepository.salvar(ordem_servico)
 
+        OrdemServicoService._recalcular_itens(
+            ordem_servico,
+            itens_dados,
+            dados.get("desconto", 0),
+        )
+
+        return ordem_servico
+
+    @staticmethod
+    def editar(
+        ordem_servico: OrdemServico,
+        dados: dict,
+    ) -> OrdemServico:
+        if ordem_servico.status in {
+            OrdemServicoService.STATUS_CONCLUIDA,
+            OrdemServicoService.STATUS_CANCELADA,
+        }:
+            raise ValueError(
+                "Não é possível editar uma Ordem de Serviço "
+                "concluída ou cancelada."
+            )
+
+        if ordem_servico.pagamento_confirmado:
+            campos_protegidos = {
+                "cliente_id",
+                "veiculo_id",
+            }
+
+            if any(
+                campo in dados
+                and dados[campo] != getattr(
+                    ordem_servico,
+                    campo,
+                )
+                for campo in campos_protegidos
+            ):
+                raise ValueError(
+                    "Não é possível alterar cliente ou veículo "
+                    "após a confirmação do pagamento."
+                )
+
+        cliente_id = dados.get(
+            "cliente_id",
+            ordem_servico.cliente_id,
+        )
+
+        veiculo_id = dados.get(
+            "veiculo_id",
+            ordem_servico.veiculo_id,
+        )
+
+        veiculo = VeiculoRepository.buscar_por_id(veiculo_id)
+
+        if veiculo is None:
+            raise ValueError("Veículo não encontrado.")
+
+        if veiculo.cliente_id != cliente_id:
+            raise ValueError(
+                "O veículo informado não pertence ao cliente."
+            )
+
+        if "numero" in dados:
+            ordem_servico.numero = dados["numero"]
+
+        ordem_servico.cliente_id = cliente_id
+        ordem_servico.veiculo_id = veiculo_id
+
+        if "data_agendamento" in dados:
+            ordem_servico.data_agendamento = (
+                dados["data_agendamento"]
+            )
+
+        if "observacoes" in dados:
+            ordem_servico.observacoes = dados["observacoes"]
+
+        itens_dados = dados.get("itens")
+
+        if itens_dados is not None:
+            desconto_ordem = dados.get(
+                "desconto",
+                0,
+            )
+
+            OrdemServicoService._recalcular_itens(
+                ordem_servico,
+                itens_dados,
+                desconto_ordem,
+            )
+        elif "desconto" in dados:
+            desconto_atual = Decimal(
+                str(ordem_servico.desconto or 0)
+            )
+
+            valor_total_atual = Decimal(
+                str(ordem_servico.valor_total or 0)
+            )
+
+            novo_desconto = Decimal(
+                str(dados["desconto"])
+            )
+
+            if novo_desconto < 0:
+                raise ValueError(
+                    "O desconto da Ordem de Serviço "
+                    "não pode ser negativo."
+                )
+
+            desconto_itens = (
+                desconto_atual
+                - Decimal(
+                    str(
+                        sum(
+                            Decimal(str(item.desconto or 0))
+                            for item in ordem_servico.itens
+                        )
+                    )
+                )
+            )
+
+            novo_valor_total = (
+                valor_total_atual
+                + desconto_atual
+                - desconto_itens
+                - novo_desconto
+            )
+
+            if novo_valor_total < 0:
+                raise ValueError(
+                    "O desconto não pode ser maior "
+                    "que o valor da Ordem de Serviço."
+                )
+
+            ordem_servico.desconto = (
+                desconto_itens + novo_desconto
+            )
+
+            ordem_servico.valor_total = novo_valor_total
+
+        return ordem_servico
+
+    @staticmethod
+    def _recalcular_itens(
+        ordem_servico: OrdemServico,
+        itens_dados: list[dict],
+        desconto_ordem,
+    ) -> None:
+        veiculo = VeiculoRepository.buscar_por_id(
+            ordem_servico.veiculo_id
+        )
+
+        if veiculo is None:
+            raise ValueError("Veículo não encontrado.")
+
+        for item in list(ordem_servico.itens):
+            ItemOrdemServicoRepository.excluir(item)
+
         subtotal = Decimal("0.00")
         desconto_itens = Decimal("0.00")
 
@@ -110,7 +266,9 @@ class OrdemServicoService:
                 )
 
             quantidade = item_dados.get("quantidade", 1)
+
             desconto = item_dados.get("desconto", 0)
+
             tipo_desconto = item_dados.get(
                 "tipo_desconto",
                 "NENHUM",
@@ -131,12 +289,13 @@ class OrdemServicoService:
             desconto_itens += Decimal(str(item.desconto))
 
         desconto_ordem = Decimal(
-            str(dados.get("desconto", 0))
+            str(desconto_ordem)
         )
 
         if desconto_ordem < 0:
             raise ValueError(
-                "O desconto da Ordem de Serviço não pode ser negativo."
+                "O desconto da Ordem de Serviço "
+                "não pode ser negativo."
             )
 
         valor_total = (
@@ -147,15 +306,15 @@ class OrdemServicoService:
 
         if valor_total < 0:
             raise ValueError(
-                "O desconto não pode ser maior que o valor da Ordem de Serviço."
+                "O desconto não pode ser maior "
+                "que o valor da Ordem de Serviço."
             )
 
         ordem_servico.desconto = (
             desconto_itens + desconto_ordem
         )
-        ordem_servico.valor_total = valor_total
 
-        return ordem_servico
+        ordem_servico.valor_total = valor_total
 
     @staticmethod
     def buscar_por_id(

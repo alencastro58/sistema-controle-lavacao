@@ -1,23 +1,37 @@
-from app.models.cliente import Cliente
-from app.models.marca import Marca
-from app.models.modelo import Modelo
-from app.models.porte_veiculo import PorteVeiculo
-from app.models.veiculo import Veiculo
-from .ordem_servico import OrdemServico
-from .servico import Servico
+from .beneficio_fidelidade import BeneficioFidelidade
+from .cliente import Cliente
+from .configuracao_fidelidade import ConfiguracaoFidelidade
 from .item_ordem_servico import ItemOrdemServico
 from .lavagem import Lavagem
+from .marca import Marca
+from .modelo import Modelo
+from .movimentacao_fidelidade import MovimentacaoFidelidade
+from .ordem_servico import OrdemServico
+from .porte_veiculo import PorteVeiculo
 from .preco_servico import PrecoServico
+from .programa_fidelidade import ProgramaFidelidade
+from .regra_fidelidade import RegraFidelidade
+from .resgate_fidelidade import ResgateFidelidade
+from .saldo_fidelidade import SaldoFidelidade
+from .servico import Servico
+from .veiculo import Veiculo
 
 __all__ = [
+    "BeneficioFidelidade",
     "Cliente",
-    "Marca",
-    "Modelo",
-    "PorteVeiculo",
-    "Veiculo",
-    "OrdemServico",
-    "Servico",
+    "ConfiguracaoFidelidade",
     "ItemOrdemServico",
     "Lavagem",
+    "Marca",
+    "Modelo",
+    "MovimentacaoFidelidade",
+    "OrdemServico",
+    "PorteVeiculo",
     "PrecoServico",
+    "ProgramaFidelidade",
+    "RegraFidelidade",
+    "ResgateFidelidade",
+    "SaldoFidelidade",
+    "Servico",
+    "Veiculo",
 ]

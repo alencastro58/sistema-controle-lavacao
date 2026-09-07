@@ -169,6 +169,59 @@ def buscar_ordem_servico(ordem_servico_id: int):
     return jsonify(resposta), 200
 
 
+@ordem_servico_bp.patch("/ordens-servico/<int:ordem_servico_id>")
+def editar_ordem_servico(ordem_servico_id: int):
+    ordem_servico = OrdemServicoService.buscar_por_id(
+        ordem_servico_id
+    )
+
+    if ordem_servico is None:
+        return jsonify(
+            {
+                "erro": "Ordem de Serviço não encontrada.",
+            }
+        ), 404
+
+    dados = request.get_json(silent=True)
+
+    if not isinstance(dados, dict):
+        return jsonify(
+            {
+                "erro": "O corpo da requisição deve ser um objeto JSON.",
+            }
+        ), 400
+
+    try:
+        ordem_servico = OrdemServicoService.editar(
+            ordem_servico,
+            dados,
+        )
+
+        db.session.commit()
+
+        resposta = _ordem_servico_para_json(ordem_servico)
+
+        resposta["itens"] = [
+            _item_ordem_servico_para_json(item)
+            for item in ordem_servico.itens
+        ]
+
+        return jsonify(resposta), 200
+
+    except ValueError as erro:
+        db.session.rollback()
+
+        return jsonify(
+            {
+                "erro": str(erro),
+            }
+        ), 400
+
+    except Exception:
+        db.session.rollback()
+        raise
+
+
 @ordem_servico_bp.patch("/ordens-servico/<int:ordem_servico_id>/status")
 def alterar_status_ordem_servico(ordem_servico_id: int):
     ordem_servico = OrdemServicoService.buscar_por_id(

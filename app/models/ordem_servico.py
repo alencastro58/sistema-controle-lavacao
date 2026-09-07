@@ -114,3 +114,13 @@ class OrdemServico(db.Model):
         "Lavagem",
         back_populates="ordem_servico",
     )
+
+    movimentacoes_fidelidade = relationship(
+        "MovimentacaoFidelidade",
+        back_populates="ordem_servico",
+    )
+
+    resgates_fidelidade = relationship(
+        "ResgateFidelidade",
+        back_populates="ordem_servico",
+    )

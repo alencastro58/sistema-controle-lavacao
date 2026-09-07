@@ -49,5 +49,21 @@ class Cliente(db.Model):
         back_populates="cliente",
     )
 
+    saldo_fidelidade = db.relationship(
+        "SaldoFidelidade",
+        back_populates="cliente",
+        uselist=False,
+    )
+
+    movimentacoes_fidelidade = db.relationship(
+        "MovimentacaoFidelidade",
+        back_populates="cliente",
+    )
+
+    resgates_fidelidade = db.relationship(
+        "ResgateFidelidade",
+        back_populates="cliente",
+    )
+
     def __repr__(self) -> str:
         return f"<Cliente {self.id} - {self.nome_razao_social}>"

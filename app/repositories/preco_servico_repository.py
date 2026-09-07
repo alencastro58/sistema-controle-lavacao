@@ -6,20 +6,36 @@ from ..models.preco_servico import PrecoServico
 
 class PrecoServicoRepository:
     @staticmethod
-    def salvar(preco_servico: PrecoServico) -> PrecoServico:
-        db.session.add(preco_servico)
+    def salvar(preco: PrecoServico) -> PrecoServico:
+        db.session.add(preco)
         db.session.flush()
 
-        return preco_servico
+        return preco
 
     @staticmethod
     def buscar_por_id(
-        preco_servico_id: int,
+        preco_id: int,
     ) -> PrecoServico | None:
         return db.session.get(
             PrecoServico,
-            preco_servico_id,
+            preco_id,
         )
+
+    @staticmethod
+    def buscar_por_servico_e_porte(
+        servico_id: int,
+        porte_id: int,
+    ) -> PrecoServico | None:
+        stmt = (
+            select(PrecoServico)
+            .where(
+                PrecoServico.servico_id == servico_id,
+                PrecoServico.porte_id == porte_id,
+                PrecoServico.ativo.is_(True),
+            )
+        )
+
+        return db.session.scalar(stmt)
 
     @staticmethod
     def listar_todos() -> list[PrecoServico]:
@@ -66,7 +82,7 @@ class PrecoServicoRepository:
 
     @staticmethod
     def excluir(
-        preco_servico: PrecoServico,
+        preco: PrecoServico,
     ) -> None:
-        db.session.delete(preco_servico)
+        db.session.delete(preco)
         db.session.flush()

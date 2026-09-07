@@ -1,7 +1,15 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
+from ..models.item_ordem_servico import ItemOrdemServico
 from ..models.ordem_servico import OrdemServico
+from ..repositories.item_ordem_servico_repository import (
+    ItemOrdemServicoRepository,
+)
 from ..repositories.ordem_servico_repository import OrdemServicoRepository
+from ..repositories.preco_servico_repository import PrecoServicoRepository
+from ..repositories.servico_repository import ServicoRepository
+from ..repositories.veiculo_repository import VeiculoRepository
 
 
 class OrdemServicoService:
@@ -24,20 +32,130 @@ class OrdemServicoService:
 
     @staticmethod
     def criar(dados: dict) -> OrdemServico:
+        itens_dados = dados.get("itens", [])
+
+        # Compatibilidade com o fluxo legado:
+        # uma OS pode ser criada inicialmente sem itens.
+        # Nesse caso, os valores informados são preservados.
+        if not itens_dados:
+            ordem_servico = OrdemServico(
+                numero=dados["numero"],
+                cliente_id=dados["cliente_id"],
+                veiculo_id=dados["veiculo_id"],
+                data_agendamento=dados.get("data_agendamento"),
+                valor_total=dados.get("valor_total", 0),
+                desconto=dados.get("desconto", 0),
+                status=OrdemServicoService.STATUS_ABERTA,
+                observacoes=dados.get("observacoes"),
+            )
+
+            return OrdemServicoRepository.salvar(ordem_servico)
+
+        veiculo = VeiculoRepository.buscar_por_id(
+            dados["veiculo_id"]
+        )
+
+        if veiculo is None:
+            raise ValueError("Veículo não encontrado.")
+
+        if veiculo.cliente_id != dados["cliente_id"]:
+            raise ValueError(
+                "O veículo informado não pertence ao cliente."
+            )
+
         ordem_servico = OrdemServico(
             numero=dados["numero"],
             cliente_id=dados["cliente_id"],
             veiculo_id=dados["veiculo_id"],
             data_agendamento=dados.get("data_agendamento"),
-            valor_total=dados.get("valor_total", 0),
-            desconto=dados.get("desconto", 0),
+            valor_total=0,
+            desconto=0,
             status=OrdemServicoService.STATUS_ABERTA,
             observacoes=dados.get("observacoes"),
         )
 
-        return OrdemServicoRepository.salvar(
-            ordem_servico
+        OrdemServicoRepository.salvar(ordem_servico)
+
+        subtotal = Decimal("0.00")
+        desconto_itens = Decimal("0.00")
+
+        for item_dados in itens_dados:
+            servico_id = item_dados["servico_id"]
+
+            servico = ServicoRepository.buscar_por_id(
+                servico_id
+            )
+
+            if servico is None:
+                raise ValueError(
+                    f"Serviço não encontrado: {servico_id}."
+                )
+
+            if not servico.ativo:
+                raise ValueError(
+                    f"O serviço '{servico.nome}' está inativo."
+                )
+
+            preco = (
+                PrecoServicoRepository.buscar_por_servico_e_porte(
+                    servico_id,
+                    veiculo.porte_id,
+                )
+            )
+
+            if preco is None:
+                raise ValueError(
+                    f"Não existe preço ativo para o serviço "
+                    f"'{servico.nome}' no porte do veículo."
+                )
+
+            quantidade = item_dados.get("quantidade", 1)
+            desconto = item_dados.get("desconto", 0)
+            tipo_desconto = item_dados.get(
+                "tipo_desconto",
+                "NENHUM",
+            )
+
+            item = ItemOrdemServico(
+                ordem_servico_id=ordem_servico.id,
+                servico_id=servico.id,
+                quantidade=quantidade,
+                valor_unitario=preco.valor,
+                desconto=desconto,
+                tipo_desconto=tipo_desconto,
+            )
+
+            ItemOrdemServicoRepository.salvar(item)
+
+            subtotal += Decimal(str(item.valor_bruto))
+            desconto_itens += Decimal(str(item.desconto))
+
+        desconto_ordem = Decimal(
+            str(dados.get("desconto", 0))
         )
+
+        if desconto_ordem < 0:
+            raise ValueError(
+                "O desconto da Ordem de Serviço não pode ser negativo."
+            )
+
+        valor_total = (
+            subtotal
+            - desconto_itens
+            - desconto_ordem
+        )
+
+        if valor_total < 0:
+            raise ValueError(
+                "O desconto não pode ser maior que o valor da Ordem de Serviço."
+            )
+
+        ordem_servico.desconto = (
+            desconto_itens + desconto_ordem
+        )
+        ordem_servico.valor_total = valor_total
+
+        return ordem_servico
 
     @staticmethod
     def buscar_por_id(

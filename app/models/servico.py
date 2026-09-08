@@ -61,15 +61,5 @@ class Servico(db.Model):
         back_populates="servico",
     )
 
-    regras_fidelidade = relationship(
-        "RegraFidelidade",
-        back_populates="servico",
-    )
-
-    beneficios_fidelidade = relationship(
-        "BeneficioFidelidade",
-        back_populates="servico",
-    )
-
     def __repr__(self) -> str:
         return f"<Servico {self.id} - {self.nome}>"

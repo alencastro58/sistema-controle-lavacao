@@ -1,13 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import (
-    BigInteger,
-    DateTime,
-    ForeignKey,
-    Numeric,
-    String,
-    Text,
-)
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..extensions import db
@@ -52,39 +45,18 @@ class MovimentacaoFidelidade(db.Model):
     )
 
     pontos: Mapped[float] = mapped_column(
-        Numeric(12, 4),
+        Numeric(12, 2),
         nullable=False,
     )
 
     saldo_anterior: Mapped[float] = mapped_column(
-        Numeric(12, 4),
+        Numeric(12, 2),
         nullable=False,
     )
 
     saldo_posterior: Mapped[float] = mapped_column(
-        Numeric(12, 4),
+        Numeric(12, 2),
         nullable=False,
-    )
-
-    regra_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        ForeignKey("regras_fidelidade.id", ondelete="RESTRICT"),
-        nullable=True,
-    )
-
-    beneficio_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        ForeignKey("beneficios_fidelidade.id", ondelete="RESTRICT"),
-        nullable=True,
-    )
-
-    versao_configuracao: Mapped[int] = mapped_column(
-        nullable=False,
-    )
-
-    base_calculo: Mapped[str | None] = mapped_column(
-        String(30),
-        nullable=True,
     )
 
     valor_base: Mapped[float | None] = mapped_column(
@@ -94,11 +66,6 @@ class MovimentacaoFidelidade(db.Model):
 
     conversao_pontos: Mapped[float | None] = mapped_column(
         Numeric(12, 4),
-        nullable=True,
-    )
-
-    validade_em: Mapped[datetime | None] = mapped_column(
-        DateTime,
         nullable=True,
     )
 
@@ -133,15 +100,6 @@ class MovimentacaoFidelidade(db.Model):
         back_populates="movimentacoes_fidelidade",
     )
 
-    regra = relationship(
-        "RegraFidelidade",
-        back_populates="movimentacoes",
-    )
-
-    beneficio = relationship(
-        "BeneficioFidelidade",
-        back_populates="movimentacoes",
-    )
-
     def __repr__(self) -> str:
         return f"<MovimentacaoFidelidade {self.id}>"
+    

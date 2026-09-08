@@ -60,10 +60,5 @@ class Cliente(db.Model):
         back_populates="cliente",
     )
 
-    resgates_fidelidade = db.relationship(
-        "ResgateFidelidade",
-        back_populates="cliente",
-    )
-
     def __repr__(self) -> str:
         return f"<Cliente {self.id} - {self.nome_razao_social}>"

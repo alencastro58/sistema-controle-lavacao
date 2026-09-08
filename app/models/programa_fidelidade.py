@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..extensions import db
@@ -15,26 +15,28 @@ class ProgramaFidelidade(db.Model):
         autoincrement=True,
     )
 
-    nome: Mapped[str] = mapped_column(
-        String(120),
-        nullable=False,
-    )
-
-    descricao: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
     habilitado: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         default=False,
     )
 
-    versao_configuracao: Mapped[int] = mapped_column(
-        Integer,
+    pontos_por_real: Mapped[float] = mapped_column(
+        Numeric(12, 4),
         nullable=False,
         default=1,
+    )
+
+    valor_por_ponto: Mapped[float] = mapped_column(
+        Numeric(12, 2),
+        nullable=False,
+        default=1,
+    )
+
+    desconto_maximo_percentual: Mapped[float] = mapped_column(
+        Numeric(5, 2),
+        nullable=False,
+        default=100,
     )
 
     criado_em: Mapped[datetime] = mapped_column(
@@ -50,22 +52,6 @@ class ProgramaFidelidade(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    configuracao = relationship(
-        "ConfiguracaoFidelidade",
-        back_populates="programa",
-        uselist=False,
-    )
-
-    regras = relationship(
-        "RegraFidelidade",
-        back_populates="programa",
-    )
-
-    beneficios = relationship(
-        "BeneficioFidelidade",
-        back_populates="programa",
-    )
-
     saldos = relationship(
         "SaldoFidelidade",
         back_populates="programa",
@@ -76,10 +62,5 @@ class ProgramaFidelidade(db.Model):
         back_populates="programa",
     )
 
-    resgates = relationship(
-        "ResgateFidelidade",
-        back_populates="programa",
-    )
-
     def __repr__(self) -> str:
-        return f"<ProgramaFidelidade {self.id} - {self.nome}>"
+        return f"<ProgramaFidelidade {self.id}>"

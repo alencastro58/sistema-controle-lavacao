@@ -1,11 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import (
-    BigInteger,
-    DateTime,
-    ForeignKey,
-    Numeric,
-)
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..extensions import db
@@ -33,7 +28,19 @@ class SaldoFidelidade(db.Model):
     )
 
     saldo_pontos: Mapped[float] = mapped_column(
-        Numeric(12, 4),
+        Numeric(12, 2),
+        nullable=False,
+        default=0,
+    )
+
+    total_acumulado: Mapped[float] = mapped_column(
+        Numeric(12, 2),
+        nullable=False,
+        default=0,
+    )
+
+    total_utilizado: Mapped[float] = mapped_column(
+        Numeric(12, 2),
         nullable=False,
         default=0,
     )
@@ -63,11 +70,6 @@ class SaldoFidelidade(db.Model):
 
     movimentacoes = relationship(
         "MovimentacaoFidelidade",
-        back_populates="saldo",
-    )
-
-    resgates = relationship(
-        "ResgateFidelidade",
         back_populates="saldo",
     )
 

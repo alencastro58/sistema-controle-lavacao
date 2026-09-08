@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 import pytest
 
@@ -8,8 +9,11 @@ from app.models import (
     Cliente,
     Marca,
     Modelo,
+    MovimentacaoFidelidade,
     OrdemServico,
     PorteVeiculo,
+    ProgramaFidelidade,
+    SaldoFidelidade,
     Veiculo,
 )
 
@@ -34,7 +38,22 @@ def ordem_servico_ciclo_dados(app_context):
         ordem=93,
     )
 
-    db.session.add_all([cliente, marca, porte])
+    programa = ProgramaFidelidade(
+        habilitado=True,
+        pontos_por_real=Decimal("1.00"),
+        valor_por_ponto=Decimal("1.00"),
+        desconto_maximo_percentual=Decimal("50.00"),
+    )
+
+    db.session.add_all(
+        [
+            cliente,
+            marca,
+            porte,
+            programa,
+        ]
+    )
+
     db.session.flush()
 
     modelo = Modelo(
@@ -60,8 +79,8 @@ def ordem_servico_ciclo_dados(app_context):
         numero=f"OS-CICLO-{identificador}",
         cliente_id=cliente.id,
         veiculo_id=veiculo.id,
-        valor_total=150,
-        desconto=0,
+        valor_total=Decimal("150.00"),
+        desconto=Decimal("0.00"),
         status="ABERTA",
         criado_em=datetime.now(),
         atualizado_em=datetime.now(),
@@ -77,11 +96,34 @@ def ordem_servico_ciclo_dados(app_context):
         "porte_id": porte.id,
         "veiculo_id": veiculo.id,
         "ordem_servico_id": ordem_servico.id,
+        "programa_id": programa.id,
     }
 
     yield dados
 
     db.session.rollback()
+
+    movimentacoes = db.session.query(
+        MovimentacaoFidelidade
+    ).filter_by(
+        programa_id=dados["programa_id"],
+    ).all()
+
+    for movimentacao in movimentacoes:
+        db.session.delete(movimentacao)
+
+    db.session.flush()
+
+    saldo = db.session.query(
+        SaldoFidelidade
+    ).filter_by(
+        programa_id=dados["programa_id"],
+    ).first()
+
+    if saldo is not None:
+        db.session.delete(saldo)
+
+    db.session.flush()
 
     ordem = db.session.get(
         OrdemServico,
@@ -90,6 +132,16 @@ def ordem_servico_ciclo_dados(app_context):
 
     if ordem is not None:
         db.session.delete(ordem)
+
+    db.session.flush()
+
+    programa = db.session.get(
+        ProgramaFidelidade,
+        dados["programa_id"],
+    )
+
+    if programa is not None:
+        db.session.delete(programa)
 
     db.session.flush()
 
@@ -174,6 +226,133 @@ def test_confirmar_pagamento_registra_pagamento_e_entrega(
     assert data["veiculo_entregue_em"] is not None
 
 
+def test_confirmar_pagamento_credita_fidelidade(
+    client,
+    app_context,
+    ordem_servico_ciclo_dados,
+):
+    ordem_id = ordem_servico_ciclo_dados["ordem_servico_id"]
+    programa_id = ordem_servico_ciclo_dados["programa_id"]
+    cliente_id = ordem_servico_ciclo_dados["cliente_id"]
+
+    response = client.post(
+        f"/ordens-servico/{ordem_id}/confirmar-pagamento",
+    )
+
+    assert response.status_code == 200
+
+    saldo = db.session.query(
+        SaldoFidelidade
+    ).filter_by(
+        programa_id=programa_id,
+        cliente_id=cliente_id,
+    ).first()
+
+    assert saldo is not None
+    assert saldo.saldo_pontos == Decimal("150.00")
+    assert saldo.total_acumulado == Decimal("150.00")
+    assert saldo.total_utilizado == Decimal("0.00")
+
+    movimentacao = db.session.query(
+        MovimentacaoFidelidade
+    ).filter_by(
+        programa_id=programa_id,
+        cliente_id=cliente_id,
+        ordem_servico_id=ordem_id,
+        tipo="CREDITO",
+    ).first()
+
+    assert movimentacao is not None
+    assert movimentacao.pontos == Decimal("150.00")
+    assert movimentacao.valor_base == Decimal("150.00")
+
+
+def test_confirmar_pagamento_nao_credita_fidelidade_duas_vezes(
+    client,
+    app_context,
+    ordem_servico_ciclo_dados,
+):
+    ordem_id = ordem_servico_ciclo_dados["ordem_servico_id"]
+    programa_id = ordem_servico_ciclo_dados["programa_id"]
+    cliente_id = ordem_servico_ciclo_dados["cliente_id"]
+
+    primeira_resposta = client.post(
+        f"/ordens-servico/{ordem_id}/confirmar-pagamento",
+    )
+
+    assert primeira_resposta.status_code == 200
+
+    segunda_resposta = client.post(
+        f"/ordens-servico/{ordem_id}/confirmar-pagamento",
+    )
+
+    assert segunda_resposta.status_code == 400
+
+    saldo = db.session.query(
+        SaldoFidelidade
+    ).filter_by(
+        programa_id=programa_id,
+        cliente_id=cliente_id,
+    ).first()
+
+    assert saldo is not None
+    assert saldo.saldo_pontos == Decimal("150.00")
+    assert saldo.total_acumulado == Decimal("150.00")
+
+    movimentacoes = db.session.query(
+        MovimentacaoFidelidade
+    ).filter_by(
+        programa_id=programa_id,
+        cliente_id=cliente_id,
+        ordem_servico_id=ordem_id,
+        tipo="CREDITO",
+    ).all()
+
+    assert len(movimentacoes) == 1
+
+
+def test_confirmar_pagamento_nao_credita_ordem_cancelada(
+    client,
+    app_context,
+    ordem_servico_ciclo_dados,
+):
+    ordem_id = ordem_servico_ciclo_dados["ordem_servico_id"]
+    programa_id = ordem_servico_ciclo_dados["programa_id"]
+    cliente_id = ordem_servico_ciclo_dados["cliente_id"]
+
+    cancelar_response = client.patch(
+        f"/ordens-servico/{ordem_id}/status",
+        json={"status": "CANCELADA"},
+    )
+
+    assert cancelar_response.status_code == 200
+
+    pagamento_response = client.post(
+        f"/ordens-servico/{ordem_id}/confirmar-pagamento",
+    )
+
+    assert pagamento_response.status_code == 400
+
+    saldo = db.session.query(
+        SaldoFidelidade
+    ).filter_by(
+        programa_id=programa_id,
+        cliente_id=cliente_id,
+    ).first()
+
+    assert saldo is None
+
+    movimentacoes = db.session.query(
+        MovimentacaoFidelidade
+    ).filter_by(
+        programa_id=programa_id,
+        cliente_id=cliente_id,
+        ordem_servico_id=ordem_id,
+    ).all()
+
+    assert movimentacoes == []
+
+
 def test_concluir_exige_pagamento_confirmado(
     client,
     ordem_servico_ciclo_dados,
@@ -247,4 +426,3 @@ def test_status_obrigatorio(
     data = response.get_json()
 
     assert data["erro"] == "status é obrigatório."
-

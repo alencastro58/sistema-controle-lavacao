@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from flask import has_app_context
+
 from ..models.item_ordem_servico import ItemOrdemServico
 from ..models.ordem_servico import OrdemServico
 from ..repositories.item_ordem_servico_repository import (
@@ -10,6 +12,7 @@ from ..repositories.ordem_servico_repository import OrdemServicoRepository
 from ..repositories.preco_servico_repository import PrecoServicoRepository
 from ..repositories.servico_repository import ServicoRepository
 from ..repositories.veiculo_repository import VeiculoRepository
+from .programa_fidelidade_service import ProgramaFidelidadeService
 
 
 class OrdemServicoService:
@@ -423,5 +426,10 @@ class OrdemServicoService:
 
         ordem_servico.veiculo_entregue = True
         ordem_servico.veiculo_entregue_em = agora
+
+        if has_app_context():
+            ProgramaFidelidadeService.creditar_por_ordem_servico(
+                ordem_servico
+            )
 
         return ordem_servico
